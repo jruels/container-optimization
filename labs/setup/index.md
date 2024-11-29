@@ -4,7 +4,7 @@ At the top of the lab page, click **View on GitHub**. Click the green **Code** b
 ### Mac/Linux
 
 The username for SSH is 
-`ec2-user`
+`ubuntu`
 
 Open a terminal and `cd` to the extracted lab directory. Inside the directory, you will see a `keys`directory. Enter it using `cd` and run the following commands.
 
