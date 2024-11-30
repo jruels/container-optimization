@@ -21,7 +21,7 @@ In this lab, you will explore the concept of multi-stage builds in Docker. By th
 
 ## Sample Go application
 
-The example application is a caricature of a microservice. It is purposefully trivial to keep focus on learning the basics of containerization for Go applications.
+The example application is a simple microservice. It is purposefully trivial to keep focus on learning the basics of containerization for Go applications.
 
 The application offers two HTTP endpoints:
 
