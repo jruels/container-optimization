@@ -8,4 +8,5 @@ This site includes the labs for the Optimizing Containers class.
 
 Lab 1: [Images](labs/images/)   
 Lab 2: [Optimizing Dockerfiles](labs/adv-dockerfile/)   
-Lab 3: [Docker Networking](labs/networking/) (optional)    
+Lab 3: [Docker Networking](labs/networking/)    
+Lab 4: [Analyzing images](labs/tools/)     
