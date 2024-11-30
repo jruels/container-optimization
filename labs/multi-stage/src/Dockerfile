@@ -1,26 +1,27 @@
-FROM python:3-slim AS base
-ENV PYBASE=/pybase
-ENV PYTHONUSERBASE=$PYBASE
-ENV PATH=$PYBASE/bin:$PATH
+# syntax=docker/dockerfile:1
 
-FROM base AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && \
-    pip install pipenv
-WORKDIR /tmp
-COPY Pipfile .
-COPY Pipfile.lock .
-RUN pipenv lock && \
-    PIP_USER=1 PIP_IGNORE_INSTALLED=1 pipenv install --system --ignore-pipfile && \
-    rm -rf /root/.cache
+FROM golang
 
-FROM base
+# Set destination for COPY
 WORKDIR /app
-RUN mkdir -p /app/templates /app/static
-COPY --from=builder /pybase /pybase
-COPY __init__.py /app
-COPY models.py /app
-COPY config.py /app
-COPY templates /app/templates
-COPY static /app/static
-EXPOSE 80
-CMD [ "flask", "run", "--port=80", "--host=0.0.0.0" ]
+
+# Download Go modules
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the source code. Note the slash at the end, as explained in
+# https://docs.docker.com/reference/dockerfile/#copy
+COPY *.go ./
+
+# Build
+RUN CGO_ENABLED=0 GOOS=linux go build -o /docker-gs-ping
+
+# Optional:
+# To bind to a TCP port, runtime parameters must be supplied to the docker command.
+# But we can document in the Dockerfile what ports
+# the application is going to listen on by default.
+# https://docs.docker.com/reference/dockerfile/#expose
+EXPOSE 8080
+
+# Run
+CMD ["/docker-gs-ping"]

@@ -36,11 +36,9 @@ The application is stateless.
 
 
 
-## Create a Dockerfile for the application
+## Dockerfile for the application
 
-Create a file in your lab directory called `Dockerfile` with the following: 
-
-
+Review the `Dockerfile` in the lab directory. 
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -76,7 +74,7 @@ CMD ["/docker-gs-ping"]
 
 ## Build the image
 
-Now that you've created your `Dockerfile`, build an image from it. The `docker build` command creates Docker images from the `Dockerfile` and a context. A build context is the set of files in the specified path or URL. The Docker build process can access any files in the context.
+Now that you've reviewed the `Dockerfile` build an image from it. The `docker build` command creates Docker images from the `Dockerfile` and a context. A build context is the set of files in the specified path or URL. The Docker build process can access any files in the context.
 
 The build command optionally takes a `--tag` with shorthand as `-t`  flag. This flag labels the image with a string value, which is easy for humans to read and recognize. If you don't pass a `--tag`, Docker will use `latest` as the default value.
 
@@ -118,7 +116,7 @@ These two issues can be solved by using multi-stage builds.
 
 In summary, a multi-stage build can carry over the artifacts from one build stage to another, and each build stage can be instantiated from a different base image.
 
-Thus, in the following example, you will build your application using a full-scale official Go image. Then, you'll copy the application binary into another image whose base is lean and doesn't include the Go toolchain or other optional components.
+Thus, you will build your application using a full-scale official Go image in the following example. Then, you'll copy the application binary into another image whose base is lean and doesn't include the Go toolchain or other optional components.
 
 The `Dockerfile.multistage` in the sample application's repository has the following content:
 
