@@ -1,10 +1,8 @@
-# Optimize Containers Course Site
+# Container Optimization Course Site
 
-This site includes the labs for the Optimizing Containers class.
+This site includes the labs for the Container Optimization class.
 
 ## Labs
-[lab VMs](https://docs.google.com/spreadsheets/d/1hqMfSpDqjohHlOX_bwkYhIvntLVW6E8ktLa3uQLHL7k/edit?usp=sharing)  
-
 Lab 1: [Access VMs](labs/setup/)   
 Lab 2: [Container resources](labs/resource-limits/)   
 Lab 3: [Multi-stage Dockerfiles](labs/multi-stage/)   
