@@ -12,10 +12,10 @@ In this lab, you will explore the concept of multi-stage builds in Docker. By th
 
 #### **Task 1: Inspect the Original Image**
 1. **Access the Server**: Log in to the provided server using SSH credentials.
-2. **Clone the lab repository**: `git clone https://github.com/jruels/container-optimization ~/container-optimization `
+2. **Clone the lab repository**: `git clone https://github.com/jruels/container-security ~/container-security`
 3. **Create a lab directory**: `mkdir ~/lab-multi`
 4. **Enter the lab directory**: `cd ~/lab-multi`
-5. **Copy the lab files from the repo**: `cp -r ~/container-optimization/labs/multi-stage/src/* .`
+5. **Copy the lab files from the repo**: `cp -r ~/container-security/labs/multi-stage/src/* .`
 
 
 
