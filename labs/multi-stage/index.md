@@ -160,7 +160,7 @@ Since you have two Dockerfiles now, you must tell Docker what Dockerfile you'd l
 
 
 ```console
-$ docker build -t docker-gs-ping:multistage -f Dockerfile.multistage .
+$ DOCKER_BUILDKIT=1 docker build -t docker-gs-ping:multistage -f Dockerfile.multistage . 
 ```
 
 Comparing the sizes of `docker-gs-ping:multistage` and `docker-gs-ping:latest` you see a significant difference.
