@@ -207,12 +207,22 @@ You can also limit a container's use of swap memory along with physical memory. 
 docker run -d --name memory-swap-limited --memory 128m --memory-swap 256m polinux/stress stress --vm 1 --vm-bytes 192M --vm-hang 0
 ```
 
-Use `docker stats` to monitor the memory and swap usage of the container. Note that the container would use swap if it was enabled, but the OS doesn't have it enabled. 
-
-Stop and remove the container:
+Since swap is not enabled on the host OS, the container cannot use swap memory and will be killed when it exceeds the 128 MB physical memory limit. Verify the container was killed by checking its status and logs:
 
 ```
-docker stop memory-swap-limited && docker rm memory-swap-limited
+docker ps -a | grep memory-swap-limited
+```
+
+```
+docker logs memory-swap-limited
+```
+
+You should see that the container exited and the logs show the stress worker received signal 9 (OOM kill).
+
+Remove the container:
+
+```
+docker rm memory-swap-limited
 ```
 
 ### Summary
