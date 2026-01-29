@@ -600,23 +600,24 @@ Java applications are notorious for unexpected OOM kills in containers because t
 - **Native libraries**: JNI code, I/O buffers, and other native allocations
 - **GC overhead**: garbage collector data structures
 
-This step demonstrates why you always need headroom between the heap and the container limit.
+This step demonstrates what happens when a Java application tries to allocate more memory than the container allows.
 
-Run a Java container with a 200MB container limit and a heap that's too large at 180MB. The JVM will attempt to allocate heap plus all the non-heap memory, likely exceeding the container limit:
+Run a Java container with a 100MB limit that attempts to allocate a 150MB array. The JVM plus the allocation will exceed the container limit and trigger an OOM kill:
 
 ```console
-docker run --name java-bad -m 200m eclipse-temurin:17-jdk \
-  java -Xmx180m -Xms180m -XX:+UseSerialGC \
-  -cp /dev/null -version 2>&1 ; echo "exit: $?"
+docker run --name java-bad -m 100m eclipse-temurin:17-jdk \
+  sh -c "echo 'byte[] data = new byte[150_000_000]; Thread.sleep(10000);' | jshell"
 ```
 
-Check if it was OOM killed:
+The container will be killed. Check the OOM status:
 
 ```console
 docker inspect --format='OOMKilled: {{.State.OOMKilled}} | ExitCode: {{.State.ExitCode}}' java-bad
 ```
 
-Even if this particular test completes (because `-version` exits quickly), in a real application that keeps running, the JVM's non-heap memory usage accumulates over time. Thread stacks grow as requests come in, the JIT compiler caches more code, and class loading continues. Eventually, the combined heap + non-heap usage exceeds the container limit and the OOM killer strikes.
+You should see `OOMKilled: true | ExitCode: 137`. Exit code 137 means the process received signal 9 (SIGKILL) from the kernel's OOM killer.
+
+This is exactly what happens in production when developers set the JVM heap equal to the container limit. The JVM needs memory beyond the heap for metaspace, thread stacks, JIT compilation, and garbage collection overhead. When the combined usage exceeds the limit, the OOM killer terminates the process without warning.
 
 The safe approach is to set the heap to about **75%** of the container limit, leaving room for everything else:
 
