@@ -331,7 +331,7 @@ Inside the container, attempt to create a fork bomb:
 
 Observe how the process limit prevents the container from consuming all resources. Without this limit, this command would crash the entire host by exhausting all available PIDs. The cgroup PID controller contains the damage to just this container.
 
-Exit the container with `Ctrl-C`.
+Type `exit` to detach from the container.
 
 This is an important defense-in-depth measure for production systems. Even if your applications don't intentionally fork excessively, bugs or exploits could trigger runaway process creation.
 
