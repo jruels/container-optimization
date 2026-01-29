@@ -227,11 +227,6 @@ docker rm -f go-single go-multi go-scratch
 
 All three images produce identical output because they run the same compiled binary. The only difference is what surrounds that binary in the image.
 
-Clean up before moving to the next section:
-
-```console
-cd ~/multi-stage-lab
-```
 
 ---
 
@@ -399,11 +394,7 @@ echo "=== Hash endpoint ===" && curl -s http://localhost:5002/hash/hello
 docker rm -f py-single py-multi
 ```
 
-Clean up:
 
-```console
-cd ~/multi-stage-lab
-```
 
 ---
 
@@ -567,11 +558,7 @@ echo "=== Multi-stage ===" && curl -s http://localhost:3002/ | head -5
 docker rm -f react-single react-multi
 ```
 
-Clean up:
 
-```console
-cd ~/multi-stage-lab
-```
 
 ---
 
@@ -705,11 +692,7 @@ echo "=== Multi-stage ===" && curl -s http://localhost:8092/health
 docker rm -f dotnet-single dotnet-multi
 ```
 
-Clean up:
 
-```console
-cd ~/multi-stage-lab
-```
 
 ---
 
