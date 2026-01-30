@@ -686,18 +686,21 @@ Confirm that the optimized images work correctly:
 
 ```
 docker run -d --name test-python -p 5000:5000 python-api:v2
+sleep 5
 curl http://localhost:5000/health
 docker stop test-python && docker rm test-python
 ```
 
 ```
 docker run -d --name test-dotnet -p 5001:5000 dotnet-api:v2
+sleep 5
 curl http://localhost:5001/health
 docker stop test-dotnet && docker rm test-dotnet
 ```
 
 ```
 docker run -d --name test-go -p 8080:8080 go-api:v2
+sleep 5
 curl http://localhost:8080/health
 docker stop test-go && docker rm test-go
 ```
