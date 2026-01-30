@@ -1,0 +1,21 @@
+# Scenario 2: Network Connectivity - Containers on Different Networks
+# The Go app can't reach Redis because they're on different networks
+
+services:
+  api:
+    build: ../go-app
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+    networks:
+      - frontend
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - backend
+
+networks:
+  frontend:
+  backend:

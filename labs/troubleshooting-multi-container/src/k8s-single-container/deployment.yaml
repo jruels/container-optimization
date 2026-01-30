@@ -1,0 +1,159 @@
+# Single container per pod - Best practice architecture
+# Benefits demonstrated:
+# 1. Clean, isolated logs per service
+# 2. Independent scaling
+# 3. Independent restarts (Redis crash doesn't affect API)
+# 4. Proper service discovery
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+        readinessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: api
+spec:
+  replicas: 2  # Can scale independently!
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          pip install flask redis > /dev/null 2>&1
+          cat << 'PYEOF' > /app.py
+          import os, sys, time
+          from flask import Flask, jsonify
+          import redis
+
+          app = Flask(__name__)
+          REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
+
+          # Retry logic for Redis connection
+          r = None
+          for attempt in range(30):
+              try:
+                  r = redis.Redis(host=REDIS_HOST, socket_connect_timeout=2)
+                  r.ping()
+                  print(f"Connected to Redis at {REDIS_HOST}")
+                  break
+              except Exception as e:
+                  print(f"Attempt {attempt+1}: Waiting for Redis at {REDIS_HOST}...")
+                  time.sleep(2)
+          else:
+              print("ERROR: Cannot connect to Redis", file=sys.stderr)
+              sys.exit(1)
+
+          @app.route('/')
+          def home():
+              import socket
+              return jsonify({
+                  "service": "api",
+                  "pod": socket.gethostname(),
+                  "status": "running"
+              })
+
+          @app.route('/health')
+          def health():
+              try:
+                  r.ping()
+                  return jsonify({"status": "healthy", "redis": "connected"})
+              except:
+                  return jsonify({"status": "unhealthy"}), 503
+
+          @app.route('/counter')
+          def counter():
+              count = r.incr('counter')
+              return jsonify({"count": count})
+
+          if __name__ == '__main__':
+              app.run(host='0.0.0.0', port=5000)
+          PYEOF
+          python /app.py
+        env:
+        - name: REDIS_HOST
+          value: "redis"  # Uses Kubernetes service discovery
+        ports:
+        - containerPort: 5000
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 35
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 80
+    targetPort: 5000
+  type: NodePort

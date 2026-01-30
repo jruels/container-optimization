@@ -1,0 +1,103 @@
+# Broken single-container deployment - Service Discovery Issue
+# Problem: API tries to connect to wrong Redis hostname
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service  # Note: Service name is redis-service
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: python:3.11-slim
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          pip install flask redis > /dev/null 2>&1
+          cat << 'PYEOF' > /app.py
+          import os, sys, time
+          from flask import Flask, jsonify
+          import redis
+
+          app = Flask(__name__)
+          # BUG: Wrong hostname - should be 'redis-service' not 'redis'
+          REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
+
+          r = None
+          for attempt in range(5):  # Only 5 attempts to fail faster
+              try:
+                  r = redis.Redis(host=REDIS_HOST, socket_connect_timeout=2)
+                  r.ping()
+                  print(f"Connected to Redis at {REDIS_HOST}")
+                  break
+              except Exception as e:
+                  print(f"Attempt {attempt+1}: Cannot connect to Redis at {REDIS_HOST}: {e}")
+                  time.sleep(2)
+          else:
+              print(f"ERROR: Cannot connect to Redis at {REDIS_HOST}", file=sys.stderr)
+              sys.exit(1)
+
+          @app.route('/')
+          def home():
+              return jsonify({"service": "api", "status": "running"})
+
+          if __name__ == '__main__':
+              app.run(host='0.0.0.0', port=5000)
+          PYEOF
+          python /app.py
+        env:
+        - name: REDIS_HOST
+          value: "redis"  # BUG: Should be "redis-service" to match Service name
+        ports:
+        - containerPort: 5000
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"

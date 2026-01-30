@@ -1,0 +1,24 @@
+# Scenario 3: FIXED - Added healthcheck and proper depends_on
+
+services:
+  api:
+    build: ../dotnet-app
+    ports:
+      - "8080:8080"
+    environment:
+      - CONNECTION_STRING=Server=db;Database=master;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;
+    depends_on:
+      db:
+        condition: service_healthy   # FIX: Wait for DB to be healthy
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+    healthcheck:   # FIX: Added healthcheck
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "YourStrong@Passw0rd" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

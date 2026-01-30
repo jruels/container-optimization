@@ -1,0 +1,23 @@
+# Scenario 5: Resource Contention - No Memory Limits
+# Redis has no memory limits and a memory-hungry workload
+
+services:
+  api:
+    build: ../go-app
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+    # No memory limits on the API either
+
+  redis:
+    image: redis:7-alpine
+    # BUG: No memory limits - Redis could consume all host memory
+    # In production, always set resource limits
+    command: redis-server --maxmemory-policy noeviction
+
+  # Simulates a memory-hungry process
+  memory-hog:
+    image: polinux/stress
+    command: stress --vm 1 --vm-bytes 512M --vm-hang 0
+    # No memory limits - will compete with other containers

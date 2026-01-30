@@ -1,0 +1,14 @@
+# Scenario 1: Container Crash - Missing Environment Variable
+# The Python app requires REDIS_HOST but it's not set
+
+services:
+  api:
+    build: ../python-app
+    ports:
+      - "5000:5000"
+    # BUG: Missing REDIS_HOST environment variable
+    # environment:
+    #   - REDIS_HOST=redis
+
+  redis:
+    image: redis:7-alpine

@@ -1,0 +1,91 @@
+# Multi-container pod with several issues to troubleshoot
+# Problem 1: App starts before Redis is ready (no init container)
+# Problem 2: Logs are mixed together (hard to debug)
+# Problem 3: One container crash affects the whole pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-container-app
+  labels:
+    app: multi-container-demo
+spec:
+  containers:
+  # Main application container
+  - name: api
+    image: python:3.11-slim
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      pip install flask redis > /dev/null 2>&1
+      cat << 'PYEOF' > /app.py
+      import os, sys, time
+      from flask import Flask, jsonify
+      import redis
+
+      app = Flask(__name__)
+      REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+
+      # Try to connect immediately (will fail if Redis isn't ready)
+      try:
+          r = redis.Redis(host=REDIS_HOST, socket_connect_timeout=2)
+          r.ping()
+          print(f"Connected to Redis at {REDIS_HOST}")
+      except Exception as e:
+          print(f"ERROR: Cannot connect to Redis: {e}", file=sys.stderr)
+          sys.exit(1)
+
+      @app.route('/')
+      def home():
+          return jsonify({"service": "api", "status": "running"})
+
+      @app.route('/health')
+      def health():
+          try:
+              r.ping()
+              return jsonify({"status": "healthy", "redis": "connected"})
+          except:
+              return jsonify({"status": "unhealthy"}), 503
+
+      @app.route('/counter')
+      def counter():
+          count = r.incr('counter')
+          return jsonify({"count": count})
+
+      if __name__ == '__main__':
+          app.run(host='0.0.0.0', port=5000)
+      PYEOF
+      python /app.py
+    env:
+    - name: REDIS_HOST
+      value: "localhost"
+    ports:
+    - containerPort: 5000
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+
+  # Redis sidecar - but starts at same time as app (race condition)
+  - name: redis
+    image: redis:7-alpine
+    ports:
+    - containerPort: 6379
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "250m"
+
+  # Log generator that produces noisy output (makes debugging harder)
+  - name: log-generator
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      while true; do
+        echo "[$(date)] Log generator: Processing batch $(shuf -i 1-1000 -n 1)"
+        sleep 2
+      done
+    resources:
+      limits:
+        memory: "32Mi"
+        cpu: "50m"

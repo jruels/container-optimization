@@ -1,0 +1,29 @@
+# Scenario 5: FIXED - Added memory limits to all containers
+
+services:
+  api:
+    build: ../go-app
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+    deploy:
+      resources:
+        limits:
+          memory: 256M   # FIX: Added memory limit
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 192M   # FIX: Added memory limit
+
+  memory-hog:
+    image: polinux/stress
+    command: stress --vm 1 --vm-bytes 128M --vm-hang 0
+    deploy:
+      resources:
+        limits:
+          memory: 192M   # FIX: Added memory limit to constrain impact

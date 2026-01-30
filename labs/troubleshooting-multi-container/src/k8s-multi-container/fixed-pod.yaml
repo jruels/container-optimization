@@ -1,0 +1,94 @@
+# Fixed multi-container pod
+# Fix 1: Init container ensures Redis is ready before app starts
+# Fix 2: Still has log complexity issue (inherent to multi-container pods)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-container-app
+  labels:
+    app: multi-container-demo
+spec:
+  # Init container waits for Redis to be ready
+  initContainers:
+  - name: wait-for-redis
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      echo "Waiting for Redis to be ready..."
+      # Wait for Redis container to start (it starts with main containers)
+      # This is a workaround - in multi-container pods, we can't easily wait
+      # for sidecars. Sleep gives Redis time to initialize.
+      sleep 5
+      echo "Proceeding with application startup"
+
+  containers:
+  # Main application container
+  - name: api
+    image: python:3.11-slim
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      pip install flask redis > /dev/null 2>&1
+      cat << 'PYEOF' > /app.py
+      import os, sys, time
+      from flask import Flask, jsonify
+      import redis
+
+      app = Flask(__name__)
+      REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+
+      # Retry logic for Redis connection
+      for attempt in range(10):
+          try:
+              r = redis.Redis(host=REDIS_HOST, socket_connect_timeout=2)
+              r.ping()
+              print(f"Connected to Redis at {REDIS_HOST}")
+              break
+          except Exception as e:
+              print(f"Attempt {attempt+1}: Waiting for Redis...")
+              time.sleep(2)
+      else:
+          print("ERROR: Cannot connect to Redis after 10 attempts", file=sys.stderr)
+          sys.exit(1)
+
+      @app.route('/')
+      def home():
+          return jsonify({"service": "api", "status": "running"})
+
+      @app.route('/health')
+      def health():
+          try:
+              r.ping()
+              return jsonify({"status": "healthy", "redis": "connected"})
+          except:
+              return jsonify({"status": "unhealthy"}), 503
+
+      @app.route('/counter')
+      def counter():
+          count = r.incr('counter')
+          return jsonify({"count": count})
+
+      if __name__ == '__main__':
+          app.run(host='0.0.0.0', port=5000)
+      PYEOF
+      python /app.py
+    env:
+    - name: REDIS_HOST
+      value: "localhost"
+    ports:
+    - containerPort: 5000
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+
+  # Redis sidecar
+  - name: redis
+    image: redis:7-alpine
+    ports:
+    - containerPort: 6379
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "250m"

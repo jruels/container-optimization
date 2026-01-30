@@ -638,7 +638,16 @@ docker stop test-dotnet && docker rm test-dotnet
 
 ### Step 20: Generate Security Profiles
 
-Slim automatically generates Seccomp and AppArmor security profiles based on actual application behavior. Create an output directory and run Slim with artifact generation:
+Slim automatically generates Seccomp and AppArmor security profiles based on actual application behavior. These profiles restrict what system calls and file access a container can perform, adding defense-in-depth security.
+
+First, ensure the Python bloated image still exists (rebuild if necessary):
+
+```
+cd ~/slim-lab/python
+docker images python-app:bloated --format "{{.Repository}}:{{.Tag}}" || docker build -t python-app:bloated .
+```
+
+Create an output directory and run Slim with the `--copy-meta-artifacts` flag to save the generated security profiles:
 
 ```
 cd ~/slim-lab
@@ -659,9 +668,9 @@ Examine the generated artifacts:
 ls -la ~/slim-lab/slim-artifacts/
 ```
 
-Key artifacts include:
-- **creport.json**: Detailed report of included files and their purposes
-- **python-app-seccomp.json**: Security profile limiting system calls the container can make
+You should see three key files:
+- **creport.json**: Detailed report of all files included in the slim image
+- **python-app-seccomp.json**: Seccomp profile limiting allowed system calls
 - **python-app-apparmor-profile**: AppArmor profile for mandatory access control
 
 ### Step 21: Examine the Security Profiles

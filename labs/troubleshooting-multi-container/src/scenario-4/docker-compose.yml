@@ -1,0 +1,21 @@
+# Scenario 4: Volume Mount Issue - Wrong Config Path
+# Nginx config is mounted to wrong location
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      # BUG: Wrong destination path - should be /etc/nginx/nginx.conf
+      - ../nginx/nginx-broken.conf:/etc/nginx/conf.d/nginx.conf:ro
+    depends_on:
+      - api
+
+  api:
+    build: ../python-app
+    environment:
+      - REDIS_HOST=redis
+
+  redis:
+    image: redis:7-alpine

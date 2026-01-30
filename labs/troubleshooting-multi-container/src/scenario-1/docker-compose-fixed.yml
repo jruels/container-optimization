@@ -1,0 +1,12 @@
+# Scenario 1: FIXED - Added REDIS_HOST environment variable
+
+services:
+  api:
+    build: ../python-app
+    ports:
+      - "5000:5000"
+    environment:
+      - REDIS_HOST=redis   # FIX: Added the required environment variable
+
+  redis:
+    image: redis:7-alpine

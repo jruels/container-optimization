@@ -1,0 +1,20 @@
+# Scenario 3: Startup Order - App Starts Before Database is Ready
+# The .NET app tries to connect before SQL Server is accepting connections
+
+services:
+  api:
+    build: ../dotnet-app
+    ports:
+      - "8080:8080"
+    environment:
+      - CONNECTION_STRING=Server=db;Database=master;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;
+    depends_on:
+      - db
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Passw0rd
+    # Note: SQL Server takes 15-30 seconds to start accepting connections
+    # depends_on alone doesn't wait for the database to be ready
