@@ -971,13 +971,21 @@ docker exec service-a ping -c 3 service-b
 
 Containers can resolve each other by name because Docker's embedded DNS server provides name resolution for containers on user-defined networks.
 
-### Step 22: DNS Caching and Performance
+### Step 22: DNS Resolution Methods
 
-Frequent DNS lookups add latency. Test resolution time:
+Docker containers can resolve names using different methods. Test resolution with `getent`, which uses the same mechanism as applications:
 
 ```
-docker exec service-a sh -c "time nslookup service-b"
+docker exec service-a getent hosts service-b
 ```
+
+You can also use the network-qualified name for explicit resolution:
+
+```
+docker exec service-a nslookup service-b.perf-network
+```
+
+Note: Alpine's busybox `nslookup` may show NXDOMAIN errors for short names due to search domain behavior. Applications using standard library calls (like `ping` or `getent`) resolve correctly because they use Docker's embedded DNS properly.
 
 For applications making many inter-service calls, DNS resolution time accumulates. Strategies to reduce DNS overhead:
 
@@ -998,8 +1006,8 @@ docker run -d --name service-c --network perf-network \
 Verify both aliases resolve:
 
 ```
-docker exec service-a nslookup api
-docker exec service-a nslookup backend
+docker exec service-a getent hosts api
+docker exec service-a getent hosts backend
 ```
 
 This enables:
