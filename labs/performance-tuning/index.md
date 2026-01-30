@@ -316,12 +316,12 @@ Create a test container that measures write performance:
 
 ```
 docker run --rm alpine sh -c "
-    dd if=/dev/zero of=/testfile bs=1M count=100 conv=fdatasync 2>&1
+    dd if=/dev/zero of=/testfile bs=1M count=100 conv=fsync 2>&1
     rm /testfile
 "
 ```
 
-The `conv=fdatasync` flag ensures data is written to disk before returning, providing accurate write speed measurements.
+The `conv=fsync` flag ensures data is written to disk before returning, providing accurate write speed measurements.
 
 Record the write speed for comparison with volume mounts.
 
@@ -335,7 +335,7 @@ docker volume create perf-test
 
 ```
 docker run --rm -v perf-test:/data alpine sh -c "
-    dd if=/dev/zero of=/data/testfile bs=1M count=100 conv=fdatasync 2>&1
+    dd if=/dev/zero of=/data/testfile bs=1M count=100 conv=fsync 2>&1
     rm /data/testfile
 "
 ```
@@ -355,7 +355,7 @@ mkdir -p ~/perf-lab/bindtest
 
 ```
 docker run --rm -v ~/perf-lab/bindtest:/data alpine sh -c "
-    dd if=/dev/zero of=/data/testfile bs=1M count=100 conv=fdatasync 2>&1
+    dd if=/dev/zero of=/data/testfile bs=1M count=100 conv=fsync 2>&1
     rm /data/testfile
 "
 ```
@@ -376,7 +376,7 @@ docker run --rm --tmpfs /data:size=200M alpine sh -c "
 "
 ```
 
-Note: The `conv=fdatasync` flag is omitted because tmpfs does not sync to disk.
+Note: The `conv=fsync` flag is omitted because tmpfs does not sync to disk.
 
 tmpfs is ideal for:
 - Application caches
@@ -1621,7 +1621,7 @@ kill $PF_PID
 | Metric | Tool | Command |
 |--------|------|---------|
 | HTTP throughput | ab | `ab -n 10000 -c 100 URL` |
-| Disk I/O | dd | `dd if=/dev/zero of=file bs=1M count=100 conv=fdatasync` |
+| Disk I/O | dd | `dd if=/dev/zero of=file bs=1M count=100 conv=fsync` |
 | Network latency | ping | `ping -c 100 host` |
 | Container resources | docker stats | `docker stats --no-stream container` |
 | Kubernetes pods | kubectl top | `kubectl top pods` |
