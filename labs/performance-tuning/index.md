@@ -1125,20 +1125,35 @@ ENTRYPOINT ["dotnet", "api.dll"]
 EOF
 ```
 
-Build and test:
+Build the image:
 
 ```
 docker build -t dotnet-health:v1 -f Dockerfile.healthcheck .
-docker run -d --name health-test -p 5000:5000 dotnet-health:v1
 ```
 
-Watch health status:
+Start the container and immediately monitor health status to observe the transition from `starting` to `healthy`:
 
 ```
-watch -n 1 'docker inspect --format="{{.State.Health.Status}}" health-test'
+docker run -d --name health-test -p 5000:5000 dotnet-health:v1 && \
+for i in {1..15}; do
+  status=$(docker inspect --format="{{.State.Health.Status}}" health-test)
+  echo "Second $i: $status"
+  sleep 1
+done
 ```
 
-Press `Ctrl+C` to stop watching. The container transitions from `starting` to `healthy` after passing health checks.
+You should see output like:
+```
+Second 1: starting
+Second 2: starting
+...
+Second 7: healthy
+Second 8: healthy
+```
+
+The container transitions from `starting` to `healthy` after the first successful health check (which runs after the 5-second interval).
+
+Clean up:
 
 ```
 docker stop health-test && docker rm health-test
@@ -1252,11 +1267,17 @@ Verify the cluster is running:
 kubectl get nodes
 ```
 
-Load the local images into minikube (minikube cannot access locally-built images directly):
+Load the local images into minikube. The `docker save` pipe method works reliably with BuildKit-built images:
 
 ```
-minikube image load dotnet-perf:v2
-minikube image load go-perf:v2
+docker save dotnet-perf:v2 | minikube image load -
+docker save go-perf:v2 | minikube image load -
+```
+
+Verify the images are available in minikube:
+
+```
+minikube image list | grep -E "dotnet-perf|go-perf"
 ```
 
 ### Step 28: Deploy Applications to Kubernetes
@@ -1357,13 +1378,15 @@ kubectl run test-pod --image=alpine --restart=Never -- sleep 3600
 kubectl wait --for=condition=Ready pod/test-pod
 ```
 
-Test service discovery:
+Test service discovery using `getent`, which resolves names the same way applications do:
 
 ```
-kubectl exec test-pod -- nslookup dotnet-api
+kubectl exec test-pod -- getent hosts dotnet-api
 ```
 
 The service `dotnet-api` resolves to a cluster IP. Kubernetes DNS automatically creates records for services.
+
+Note: Alpine's busybox `nslookup` may fail due to search domain behavior. Use `getent hosts` or test connectivity directly, which is what matters for applications.
 
 Test connectivity:
 
@@ -1381,12 +1404,14 @@ Enable the metrics server:
 minikube addons enable metrics-server
 ```
 
-Wait for metrics to become available:
+Wait for the metrics server to become available (this typically takes 60-90 seconds):
 
 ```
-kubectl top nodes 2>/dev/null || echo "Waiting for metrics server..."
-sleep 30
-kubectl top nodes
+echo "Waiting for metrics server to be ready..."
+until kubectl top nodes 2>/dev/null; do
+  echo "Metrics not ready yet, waiting..."
+  sleep 10
+done
 ```
 
 Create a Horizontal Pod Autoscaler:
@@ -1401,12 +1426,14 @@ View the autoscaler:
 kubectl get hpa
 ```
 
-Generate load to trigger scaling:
+Generate load to trigger scaling. Run multiple parallel wget processes to generate sufficient CPU load:
 
 ```
 kubectl run load-gen --image=busybox --restart=Never -- /bin/sh -c \
-  "while true; do wget -q -O- http://dotnet-api/; done"
+  "for i in 1 2 3 4 5 6 7 8; do while true; do wget -q -O- http://dotnet-api/; done & done; wait"
 ```
+
+This spawns 8 parallel wget loops, which should drive CPU above the 50% threshold.
 
 Watch the autoscaler respond (this may take 1-2 minutes):
 
